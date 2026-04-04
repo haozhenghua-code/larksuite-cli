@@ -96,65 +96,26 @@ func newBotShortcutRuntime(t *testing.T, rt http.RoundTripper) *common.RuntimeCo
 }
 
 func TestResolveP2PChatID(t *testing.T) {
-	var gotAuth string
 	runtime := newBotShortcutRuntime(t, shortcutRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		switch {
-		case strings.Contains(req.URL.Path, "tenant_access_token"):
-			return shortcutJSONResponse(200, map[string]interface{}{
-				"code":                0,
-				"tenant_access_token": "tenant-token",
-				"expire":              7200,
-			}), nil
-		case strings.Contains(req.URL.Path, "/open-apis/im/v1/chat_p2p/batch_query"):
-			gotAuth = req.Header.Get("Authorization")
-			return shortcutJSONResponse(200, map[string]interface{}{
-				"code": 0,
-				"data": map[string]interface{}{
-					"p2p_chats": []interface{}{
-						map[string]interface{}{"chat_id": "oc_123"},
-					},
-				},
-			}), nil
-		default:
-			return nil, fmt.Errorf("unexpected request: %s", req.URL.String())
-		}
+		return nil, fmt.Errorf("unexpected request: %s", req.URL.String())
 	}))
 
 	got, err := resolveP2PChatID(runtime, "ou_123")
-	if err != nil {
+	if err == nil || !strings.Contains(err.Error(), "requires user identity") {
 		t.Fatalf("resolveP2PChatID() error = %v", err)
 	}
-	if got != "oc_123" {
-		t.Fatalf("resolveP2PChatID() = %q, want %q", got, "oc_123")
-	}
-	if gotAuth != "Bearer tenant-token" {
-		t.Fatalf("Authorization header = %q, want %q", gotAuth, "Bearer tenant-token")
+	if got != "" {
+		t.Fatalf("resolveP2PChatID() = %q, want empty result on validation error", got)
 	}
 }
 
 func TestResolveP2PChatIDNotFound(t *testing.T) {
 	runtime := newBotShortcutRuntime(t, shortcutRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		switch {
-		case strings.Contains(req.URL.Path, "tenant_access_token"):
-			return shortcutJSONResponse(200, map[string]interface{}{
-				"code":                0,
-				"tenant_access_token": "tenant-token",
-				"expire":              7200,
-			}), nil
-		case strings.Contains(req.URL.Path, "/open-apis/im/v1/chat_p2p/batch_query"):
-			return shortcutJSONResponse(200, map[string]interface{}{
-				"code": 0,
-				"data": map[string]interface{}{
-					"p2p_chats": []interface{}{},
-				},
-			}), nil
-		default:
-			return nil, fmt.Errorf("unexpected request: %s", req.URL.String())
-		}
+		return nil, fmt.Errorf("unexpected request: %s", req.URL.String())
 	}))
 
 	_, err := resolveP2PChatID(runtime, "ou_404")
-	if err == nil || !strings.Contains(err.Error(), "P2P chat not found") {
+	if err == nil || !strings.Contains(err.Error(), "requires user identity") {
 		t.Fatalf("resolveP2PChatID() error = %v", err)
 	}
 }

@@ -28,7 +28,7 @@ var ImChatMessageList = common.Shortcut{
 	HasFormat:   true,
 	Flags: []common.Flag{
 		{Name: "chat-id", Desc: "(required, mutually exclusive with --user-id) chat ID (oc_xxx)"},
-		{Name: "user-id", Desc: "(required, mutually exclusive with --chat-id) user open_id (ou_xxx)"},
+		{Name: "user-id", Desc: "(required, mutually exclusive with --chat-id; user identity only) user open_id (ou_xxx)"},
 		{Name: "start", Desc: "start time (ISO 8601)"},
 		{Name: "end", Desc: "end time (ISO 8601)"},
 		{Name: "sort", Default: "desc", Desc: "sort order", Enum: []string{"asc", "desc"}},
@@ -73,6 +73,9 @@ var ImChatMessageList = common.Shortcut{
 		if userFlag := runtime.Str("user-id"); userFlag != "" {
 			if _, err := common.ValidateUserID(userFlag); err != nil {
 				return err
+			}
+			if runtime.IsBot() {
+				return common.FlagErrorf("--user-id requires user identity (--as user); use --chat-id when calling with bot identity")
 			}
 		}
 
